@@ -5,10 +5,12 @@ using UnityEngine;
 
 public class GridBehaviour : MonoBehaviour
 {
+    // maximum grids = 3600
+    private int maxGrid = 3600;
     public int rows = 10;
-    public int columns = 10;
-    public int scale = 1;
-    public GameObject gridPrefab;
+    [HideInInspector] public int columns = 10;
+    [HideInInspector] public float scale = 1;
+    //public GameObject gridPrefab;
     public GridNode[,] gridArray;
     public LayerMask wall;
     // Start is called before the first frame update
@@ -19,6 +21,13 @@ public class GridBehaviour : MonoBehaviour
         GenerateGrid();
     }
 
+    public void Start()
+    {
+        columns = rows;
+        scale = (float) Math.Sqrt((float) maxGrid/(rows * columns));
+        print(scale);
+    }
+
     private void GenerateGrid()
     {
          
@@ -26,25 +35,47 @@ public class GridBehaviour : MonoBehaviour
         {
             for (int j = 0; j < rows; j++)
             {
-                GameObject obj = Instantiate(gridPrefab);
-                obj.transform.SetParent(gameObject.transform);
+                //GameObject obj = Instantiate(gridPrefab);
+                //obj.transform.SetParent(gameObject.transform);
                 //obj.transform.localPosition = new Vector3(leftBottomLocation.x + scale * i, leftBottomLocation.y, leftBottomLocation.z + scale * j);
-                obj.transform.localPosition = new Vector3(scale * i, 0,scale * j);
-                obj.transform.localRotation = Quaternion.identity;
-                GridNode test = obj.GetComponent<GridNode>();
-                test.y = i;
-                test.x = j;
-                if (Physics.CheckSphere(test.transform.position, 2.0f, wall))
+                //obj.transform.localPosition = new Vector3(scale * i, 0,scale * j);
+                //obj.transform.localRotation = Quaternion.identity;
+                //GridNode node = obj.GetComponent<GridNode>();
+
+                // Optimized version of above code
+                // Doesnt use a game object instead just save position of said object in a class 
+                GridNode node = new GridNode();
+                node.localPosition = new Vector3(scale * i, 0, scale * j);
+                node.position = TransformLocalToWorld(node.localPosition);
+                //print(node.position);
+                node.y = i;
+                node.x = j;
+                if (Physics.CheckSphere(node.position, scale, wall))
                 {
-                    test.isObstacle = true;
+                    node.isObstacle = true;
+
+                    // Code below visualization unwalkable nodes
+                    //GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    //cube.transform.position = node.position;
                 } else
                 {
-                    test.isObstacle = false;
+                    node.isObstacle = false;
+
+                    // Code below visualization walkable nodes
+                    //GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                    //cube.transform.position = node.position;
                 }
-                gridArray[i, j] = test;
+                gridArray[i, j] = node;
 
             }
         }
+    }
+
+    private Vector3 TransformLocalToWorld(Vector3 toTransform)
+    {
+        Vector3 posDiff = gameObject.transform.position - gameObject.transform.localPosition;
+        toTransform += posDiff;
+        return toTransform + gameObject.transform.localPosition;
     }
 
     public Vector3 TransformWorldToLocal(Vector3 toTransform)

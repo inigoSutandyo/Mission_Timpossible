@@ -7,6 +7,7 @@ public class EnemyMovement : MonoBehaviour
 {
     private EnemyBehaviour behaviour;
     private bool playerFound = false;
+    //private bool isTraversing = false;
     private List<GridNode> FinalPath;
     public GridBehaviour GridManager;
 
@@ -15,7 +16,7 @@ public class EnemyMovement : MonoBehaviour
     public GridNode[,] gridArray;
 
     private float time = 0f;
-    private float timeDelay = 1f;
+    private float timeDelay = 0.2f;
 
     [SerializeField] private PlayerStatus playerStatus;
 
@@ -29,18 +30,19 @@ public class EnemyMovement : MonoBehaviour
     private void Start()
     {
         FinalPath = new List<GridNode>();
+        //StartCoroutine(TraversePath());
+        
     }
 
     // Update is called once per frame
     void Update()
     {
-        time = time + 1f* Time.deltaTime;
+        time += 1f* Time.deltaTime;
 
-        float distance = Vector3.Distance(this.transform.position, playerPosition.position);
+        float distance = Vector3.Distance(transform.position, playerPosition.position);
         
         if (distance <= behaviour.noticeRadius)
         {
-
             if (distance <= behaviour.attackRadius)
             {
                 print("Pew Pew");
@@ -50,29 +52,41 @@ public class EnemyMovement : MonoBehaviour
                     playerStatus.health -= 1;
                     time = 0;
                 }
-                
-            }
-            GridNode playerNode = GetGridNode(GridManager.TransformWorldToLocal(playerPosition.position));
-            GridNode startNode = GetGridNode(GridManager.TransformWorldToLocal(transform.position));
+                playerFound = false;
+                FinalPath.Clear();
+            } else
+            {
+                print("Finding path..." + playerFound + " >> " + FinalPath.Count);
+                GridNode playerNode = GetGridNode(GridManager.TransformWorldToLocal(playerPosition.position));
+                GridNode startNode = GetGridNode(GridManager.TransformWorldToLocal(transform.position));
+                if (playerNode != null && !playerFound)
+                {
+                    
+                    //print("Player X = " + playerNode.x);
+                    //print("Player = " + playerNode.x + "," + playerNode.y);
+                    FindPath(startNode, playerNode);
+                }
+                else
+                {
+                    enemyController.SetBool("isRunning", false);
+                }
 
-            if (distance > behaviour.attackRadius && playerNode != null && !playerFound)
-            {
-                //print("Player X = " + playerNode.x);
-                //print("Player = " + playerNode.x + "," + playerNode.y);
-                FindPath(startNode, playerNode);
-            }
-            else
-            {
-                enemyController.SetBool("isRunning", false);
-            }
 
-            if (playerFound)
-            {
-                TraversePath();
-                enemyController.SetBool("isRunning", true);
-                transform.position += transform.forward * Time.deltaTime * behaviour.movementSpeed;
+                if (playerFound && FinalPath.Count > 0)
+                {
+                    TraversePath();
+                    enemyController.SetBool("isRunning", true);
+                    transform.position += transform.forward * Time.deltaTime * behaviour.movementSpeed;
+                }
             }
-        } 
+            
+            
+
+            
+        } else
+        {
+            playerFound = false;
+        }
 
         
     }
@@ -81,11 +95,45 @@ public class EnemyMovement : MonoBehaviour
     {
         foreach (var path in FinalPath)
         {
-            Rotate(path.gameObject.transform.position);
-            
+            Rotate(path.position);
+
         }
         FinalPath.Clear();
         playerFound = false;
+
+        //if (FinalPath.Count > 0 && playerFound)
+        //{
+        //    //Rotate(FinalPath[0].position);
+        //    foreach (var path in FinalPath)
+        //    {
+        //        //Rotate(path.gameObject.transform.position);
+        //        Rotate(path.position);
+        //        //yield return new WaitForSeconds(0.2f);
+        //    }
+        //    FinalPath.Clear();
+        //    playerFound = false;
+        //}
+
+        //int count = FinalPath.Count;
+        //int i = 0;
+        //bool rotate = false;
+        //while (i < count)
+        //{
+        //    if (!rotate)
+        //    {
+        //        Rotate(FinalPath[0].position);
+        //        rotate = true;
+        //    }
+
+        //    if (time >= timeDelay)
+        //    {
+        //        rotate = false;
+        //        time = 0;
+        //        i += 1;
+        //    }
+        //}
+        //playerFound = false;
+        //isTraversing = false;
     }
 
     private void Rotate(Vector3 targetPosition)
@@ -158,9 +206,9 @@ public class EnemyMovement : MonoBehaviour
 
     private GridNode GetGridNode(Vector3 pos)
     {
-        
-        int pX = (int)pos.x;
-        int pY = (int)pos.z;
+        //print(pos.x + " ## " + pos.y);
+        int pX = (int)(pos.x / GridManager.scale);
+        int pY = (int)(pos.z / GridManager.scale);
         //print(pX + " <> " + pY);
         if (pX < 0 || pX >= GridManager.rows || pY < 0 || pY >= GridManager.columns)
         {
