@@ -18,6 +18,7 @@ public class QuestManager : MonoBehaviour
 
     [SerializeField] private GameObject rifle;
     [SerializeField] private GameObject pistol;
+    [SerializeField] private WallController wall;
     void Start()
     {
         quests = new List<Quest>();
@@ -62,6 +63,11 @@ public class QuestManager : MonoBehaviour
         player.quest.isActive = false;
         player.quest = quests[questCount];
         showQuest();
+
+        if (player.quest.id == 6)
+        {
+            wall.DropWall();
+        }
     }
 
     public void updateQuestBox(string str)
