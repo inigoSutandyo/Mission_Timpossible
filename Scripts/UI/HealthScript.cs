@@ -14,7 +14,7 @@ public class HealthScript : MonoBehaviour
         slider = transform.GetComponent<Slider>();
     }
 
-    public void setHealth(int health)
+    public void SetHealth(int health)
     {
         slider.value = health;
     }

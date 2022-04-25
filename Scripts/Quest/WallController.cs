@@ -1,21 +1,24 @@
 using UnityEngine;
 public class WallController : MonoBehaviour
 {
-    private bool isDrop = false;
-    private Animator anim;
-    private float posY;
-    private Transform objTransform;
-    private void Awake()
-    {
-        objTransform = GetComponent<Transform>();
-    }
+    [SerializeField] private bool isDrop = false;
 
+    [SerializeField] private GameObject Pivot1, Pivot2;
+
+    private float speed = 10f;
 
     void Update()
     {
-        if (isDrop && objTransform.position.y >= -1)
+        if (isDrop)
         {
-            objTransform.position = new Vector3(objTransform.position.x, objTransform.position.y - 1.0f * Time.deltaTime, objTransform.position.z);
+          
+            var step = speed * Time.deltaTime;
+            Quaternion target1 = Quaternion.Euler(0, -70, 0);
+            Quaternion target2 = Quaternion.Euler(0, 70, 0);
+            Pivot1.transform.localRotation = Quaternion.RotateTowards(Pivot1.transform.localRotation, target1, step);
+
+
+            Pivot2.transform.localRotation = Quaternion.RotateTowards(Pivot2.transform.localRotation, target2, step);
         }
     }
 

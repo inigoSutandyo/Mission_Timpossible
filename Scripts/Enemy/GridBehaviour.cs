@@ -5,59 +5,58 @@ using UnityEngine;
 
 public class GridBehaviour : MonoBehaviour
 {
-    // maximum grids = 3600
-    private int maxGrid = 3600;
-    public int rows = 10;
-    [HideInInspector] public int columns = 10;
+    public int fixRow = 60;
+    public int fixColumn = 60;
+    public int rows = 60;
+    public int columns = 60;
     [HideInInspector] public float scale = 1;
     //public GameObject gridPrefab;
-    public GridNode[,] gridArray;
+    private GridNode[,] gridArray;
     public LayerMask wall;
     // Start is called before the first frame update
+    public bool isSafeGrid = false;
+    private int maxGrid;
 
     private void Awake()
     {
         gridArray = new GridNode[columns, rows];
-        GenerateGrid();
     }
 
     public void Start()
     {
-        columns = rows;
+        maxGrid = fixRow * fixColumn;
         scale = (float) Math.Sqrt((float) maxGrid/(rows * columns));
+        GenerateGrid();
+        isSafeGrid = true;
         print(scale);
     }
 
     private void GenerateGrid()
     {
          
-        for (int i = 0; i < columns; i++)
+        for (float i = 0; i < columns; i++)
         {
-            for (int j = 0; j < rows; j++)
+            for (float j = 0; j < rows; j++)
             {
-                //GameObject obj = Instantiate(gridPrefab);
-                //obj.transform.SetParent(gameObject.transform);
-                //obj.transform.localPosition = new Vector3(leftBottomLocation.x + scale * i, leftBottomLocation.y, leftBottomLocation.z + scale * j);
-                //obj.transform.localPosition = new Vector3(scale * i, 0,scale * j);
-                //obj.transform.localRotation = Quaternion.identity;
-                //GridNode node = obj.GetComponent<GridNode>();
-
-                // Optimized version of above code
-                // Doesnt use a game object instead just save position of said object in a class 
-                GridNode node = new GridNode();
-                node.localPosition = new Vector3(scale * i, 0, scale * j);
+                //print(scale * i + " " + scale * j);
+                GridNode node = new GridNode
+                {
+                    localPosition = new Vector3(scale * i, 0, scale * j)
+                };
                 node.position = TransformLocalToWorld(node.localPosition);
                 //print(node.position);
-                node.y = i;
-                node.x = j;
-                if (Physics.CheckSphere(node.position, scale, wall))
+                node.y = (int) i;
+                node.x = (int) j;
+                node.isPatrolPoint = false;
+                if (Physics.CheckSphere(node.position, 1, wall))
                 {
                     node.isObstacle = true;
 
                     // Code below visualization unwalkable nodes
                     //GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
                     //cube.transform.position = node.position;
-                } else
+                }
+                else
                 {
                     node.isObstacle = false;
 
@@ -65,8 +64,8 @@ public class GridBehaviour : MonoBehaviour
                     //GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                     //cube.transform.position = node.position;
                 }
-                gridArray[i, j] = node;
-
+                gridArray[(int) i, (int) j] = node;
+                //print(i + " , " + j + " : " + node);
             }
         }
     }
@@ -88,5 +87,33 @@ public class GridBehaviour : MonoBehaviour
     public Vector3 TransformToNodePosition(Vector3 toTransform)
     {
         return toTransform - gameObject.transform.localPosition;
+    }
+
+    public GridNode[,] GetGridArray()
+    {
+        return gridArray;
+    }
+
+    public void SetNodeAsObstacle(int x, int y)
+    {
+        gridArray[y, x].isObstacle = true;
+    }
+
+    public void SetNodeAsWalkable(int x, int y)
+    {
+        gridArray[y, x].isObstacle = false;
+    }
+
+    public GridNode GetGridNode(Vector3 pos)
+    {
+        //print(pos.x + " ## " + pos.y);
+        int pX = (int)(pos.x / scale);
+        int pY = (int)(pos.z / scale);
+        //print(pX + " <> " + pY);
+        if (pX < 0 || pX >= columns || pY < 0 || pY >= rows)
+        {
+            return null;
+        }
+        return gridArray[pX, pY];
     }
 }

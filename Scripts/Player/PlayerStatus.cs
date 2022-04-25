@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -16,15 +17,27 @@ public class PlayerStatus : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        HealthBar.setHealth(health);
+        HealthBar.SetHealth(health);
 
         if (health <= 0)
         {
-            Time.timeScale = 0;
-            DeathPanel.SetActive(true);
+            PlayerDie();
         }
 
        
     }
 
+    public void PlayerDie()
+    {
+        health = 0;
+        Time.timeScale = 0;
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.Confined;
+        DeathPanel.SetActive(true);
+    }
+
+    public void TakeDamage(int bulletDamage)
+    {
+        health -= bulletDamage;
+    }
 }

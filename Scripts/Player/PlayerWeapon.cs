@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Animations.Rigging;
-using UnityEditor.Animations;
 using System;
 
 public class PlayerWeapon : MonoBehaviour
@@ -16,44 +15,73 @@ public class PlayerWeapon : MonoBehaviour
     public Transform crossHairTaget;
     public Transform primaryParent, secondaryParent;
 
-    public Transform leftHandle;
-    public Transform rightHandle;
+    //public Transform leftHandle;
+    //public Transform rightHandle;
 
-    [SerializeField] Rig rigHands;
+    //[SerializeField] Rig rigHands;
     public Animator rigController;
 
-    private bool equipRifle = false , equipPistol = false;
+    private bool equipRifle = false, equipPistol = false;
     private string currWeapon = "None";
 
     public Cinemachine.CinemachineFreeLook freeLook;
+    private Cinemachine.CinemachineComposer composer;
 
     private bool isReloading;
+
+    [SerializeField] Image rifleImage;
+    [SerializeField] Image pistolImage;
+
+    private PauseManager pause;
+
+    private void Awake()
+    {
+        pause = FindObjectOfType<PauseManager>();
+    }
+
     void Start()
     {
         ammoText.text = "";
 
         weaponList.Add(null);
         weapon = null;
+        //rigHands.weight = 0;
         RaycastWeapon currWeapon = GetComponentInChildren<RaycastWeapon>();
 
         if (currWeapon != null)
         {
             EquipWeapon(currWeapon);
         }
+        freeLook.m_CommonLens = true;
     }
 
     // Update is called once per frame
     void Update()
     {
         BulletUpdater();
+        ChangeWeaponInitiator();
 
+        if (pause.isPause) return;
         if (isReloading) return;
 
-        ChangeWeaponInitiator();
         if (weapon)
         {
             AutoReload();
             WeaponController();
+            AimController();
+        }
+    }
+
+    private void AimController()
+    {
+        if (Input.GetButtonDown("Fire2"))
+        {
+            freeLook.m_Lens.FieldOfView = 20;
+        } 
+
+        if (Input.GetButtonUp("Fire2"))
+        {
+            freeLook.m_Lens.FieldOfView = 40;
         }
     }
 
@@ -76,7 +104,7 @@ public class PlayerWeapon : MonoBehaviour
         {
             weapon.Shoot();
         }
-        else if (weapon.isShooting)
+        if (weapon.isShooting)
         {
             weapon.UpdateShoot(Time.deltaTime);
         }
@@ -91,7 +119,7 @@ public class PlayerWeapon : MonoBehaviour
             weapon.Stop();
             InitiateReload();
         }
-        
+
     }
 
     private void ChangeWeaponInitiator()
@@ -125,12 +153,9 @@ public class PlayerWeapon : MonoBehaviour
         {
             return;
         }
-        //print("Reload");
         StartCoroutine(StartReloadWeapon());
-        //rigController.SetTrigger("Reload");
         weapon.Reload();
         weapon.UpdateText();
-        //StartCoroutine(StopReloadWeapon());
     }
 
     private void ChangeWeapon(string name)
@@ -138,19 +163,33 @@ public class PlayerWeapon : MonoBehaviour
         if (currWeapon != name)
         {
             StartCoroutine(HolsterWeapon(currWeapon));
-
-            if (name == "None" )
+            
+            if (name == "None")
             {
                 ammoText.text = "";
                 weapon = weaponList[0];
                 currWeapon = name;
+
+                pistolImage.color = new Color(0f, 0f, 0f, .7f);
+                rifleImage.color = new Color(0f, 0f, 0f, .7f); ;
                 return;
             }
 
             foreach (var w in weaponList)
             {
-                if (w && w.gameObject.tag == name)
+                if (w && w.gameObject.CompareTag(name))
                 {
+                    if (name == "Rifle")
+                    {
+                        rifleImage.color = new Color(0.7f, 0.7f, 0.7f, .5f);
+
+                        pistolImage.color = new Color(0f, 0f, 0f, .7f);
+                    } else
+                    {
+                        pistolImage.color = new Color(0.7f, 0.7f, 0.7f, .5f);
+
+                        rifleImage.color = new Color(0f, 0f, 0f, .7f);
+                    }
                     weapon = w;
                 }
             }
@@ -158,32 +197,23 @@ public class PlayerWeapon : MonoBehaviour
             // play animation to equip weapon
             if (weapon)
             {
-                StartCoroutine(EquipWeapon(name));
+                StartCoroutine(EquipWeaponAnimation(name));
             }
             currWeapon = name;
         }
-        //print(currWeapon);
     }
 
-    private IEnumerator EquipWeapon(string name)
+    private IEnumerator EquipWeaponAnimation(string name)
     {
+        //rigHands.weight = 1;
         weapon.UpdateText();
         rigController.SetBool("Holster " + name, false);
-        //rigController.Play("equip_" + name);
-        do
-        {
-            yield return new WaitForEndOfFrame();
-        } while (rigController.GetCurrentAnimatorStateInfo(0).normalizedTime < 1.5f);
-        
-    }
 
-    private IEnumerator StopReloadWeapon()
-    {
-        rigController.SetBool("Reload", false);
         do
         {
             yield return new WaitForEndOfFrame();
         } while (rigController.GetCurrentAnimatorStateInfo(0).normalizedTime < 1.5f);
+
     }
 
     private IEnumerator StartReloadWeapon()
@@ -208,9 +238,8 @@ public class PlayerWeapon : MonoBehaviour
             {
                 yield return new WaitForEndOfFrame();
             } while (rigController.GetCurrentAnimatorStateInfo(0).normalizedTime < 1.5f);
+            //rigHands.weight = 0;
         }
-        
-
     }
 
     public void EquipWeapon(RaycastWeapon newWeapon)
@@ -221,11 +250,12 @@ public class PlayerWeapon : MonoBehaviour
         weapon.ammoText = ammoText;
         weapon.weaponRecoil.freeLook = freeLook;
 
-        if (newWeapon.tag == "Pistol")
+        if (newWeapon.CompareTag("Pistol"))
         {
             equipPistol = true;
             weapon.transform.parent = secondaryParent;
-        } else
+        }
+        else
         {
             equipRifle = true;
             weapon.transform.parent = primaryParent;
@@ -235,10 +265,20 @@ public class PlayerWeapon : MonoBehaviour
         weaponList.Add(weapon);
 
         ChangeWeapon(newWeapon.tag);
-        
-        
-        //weapon.gameObject.SetActive(true);
     }
-    
 
+    public void Disarm()
+    {
+        ChangeWeapon("None");
+    }
+
+    public bool CheckHoldingWeapon()
+    {
+        if (currWeapon == "None")
+        {
+            return false;
+        }
+
+        return true;
+    }
 }

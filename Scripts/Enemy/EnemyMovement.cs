@@ -5,160 +5,150 @@ using UnityEngine;
 
 public class EnemyMovement : MonoBehaviour
 {
-    private EnemyBehaviour behaviour;
-    private bool playerFound = false;
+    public bool objectFound = false;
     //private bool isTraversing = false;
-    private List<GridNode> FinalPath;
-    public GridBehaviour GridManager;
+    private Vector3[] FinalPath;
+    [SerializeField] private GridBehaviour GridManager;
 
+    //public GridNode[,] gridArray;
 
-    public Transform playerPosition;
-    public GridNode[,] gridArray;
+    private int m_index = 0;
+    public bool arriveAtNode = false;
+    private CharacterController characterController;
 
-    private float time = 0f;
-    private float timeDelay = 0.2f;
-
-    [SerializeField] private PlayerStatus playerStatus;
-
-    public Animator enemyController;
     void Awake()
     {
-        behaviour = GetComponent<EnemyBehaviour>();
-        gridArray = GridManager.gridArray;
+        FinalPath = new Vector3[300];
+        //gridArray = GridManager.gridArray;
+        characterController = GetComponent<CharacterController>();
     }
 
-    private void Start()
+    
+
+    public Vector3[] StartPathing(GridNode startCell, GridNode targetCell)
     {
-        FinalPath = new List<GridNode>();
-        //StartCoroutine(TraversePath());
         
+        m_index = 0;
+        arriveAtNode = true;
+        return FindPath(startCell, targetCell);
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        time += 1f* Time.deltaTime;
 
-        float distance = Vector3.Distance(transform.position, playerPosition.position);
-        
-        if (distance <= behaviour.noticeRadius)
+    public void TraversePathForBoss(BossBehaviour behaviour)
+    {
+        if (FinalPath.Length <= 0) return;
+        //print(arriveAtNode);
+        if (arriveAtNode)
         {
-            if (distance <= behaviour.attackRadius)
-            {
-                print("Pew Pew");
-                Rotate(playerPosition.position);
-                if (time >= timeDelay)
-                {
-                    playerStatus.health -= 1;
-                    time = 0;
-                }
-                playerFound = false;
-                FinalPath.Clear();
-            } else
-            {
-                print("Finding path..." + playerFound + " >> " + FinalPath.Count);
-                GridNode playerNode = GetGridNode(GridManager.TransformWorldToLocal(playerPosition.position));
-                GridNode startNode = GetGridNode(GridManager.TransformWorldToLocal(transform.position));
-                if (playerNode != null && !playerFound)
-                {
-                    
-                    //print("Player X = " + playerNode.x);
-                    //print("Player = " + playerNode.x + "," + playerNode.y);
-                    FindPath(startNode, playerNode);
-                }
-                else
-                {
-                    enemyController.SetBool("isRunning", false);
-                }
+            // add new path
+            var new_path = FinalPath[m_index];
+            // rotate enemy to new path
+            Rotate(new_path);
+            arriveAtNode = false;
 
+        }
 
-                if (playerFound && FinalPath.Count > 0)
+        if (!arriveAtNode)
+        {
+            Rotate(FinalPath[m_index]);
+            var offset = FinalPath[m_index] - transform.position;
+            //print(offset.magnitude);
+            if (offset.magnitude > .1f)
+            {
+                offset = offset.normalized * behaviour.movementSpeed;
+                characterController.Move(offset * Time.deltaTime);
+            }
+            else
+            {
+                arriveAtNode = true;
+                m_index += 1;
+                if (m_index >= FinalPath.Length)
                 {
-                    TraversePath();
-                    enemyController.SetBool("isRunning", true);
-                    transform.position += transform.forward * Time.deltaTime * behaviour.movementSpeed;
+                    Array.Clear(FinalPath, 0, FinalPath.Length);
+                    objectFound = false;
                 }
             }
-            
-            
+        }
+    }
 
-            
+    public void TraversePath(EnemyBehaviour behaviour)
+    {
+        if (FinalPath.Length <= 0) return;
+        //print(arriveAtNode);
+        if (arriveAtNode)
+        {
+            // add new path
+            var new_path = FinalPath[m_index];
+            // rotate enemy to new path
+            Rotate(new_path);
+            arriveAtNode = false;
+
+        }
+        
+        if (!arriveAtNode)
+        {
+            Rotate(FinalPath[m_index]);
+            var offset = FinalPath[m_index] - transform.position;
+            //print(offset.magnitude);
+            if (offset.magnitude > .1f)
+            {
+                offset = offset.normalized * behaviour.movementSpeed;
+                characterController.Move(offset * Time.deltaTime);
+            }
+            else
+            {
+                arriveAtNode = true;
+                m_index += 1;
+                if (m_index >= FinalPath.Length)
+                {
+                    Array.Clear(FinalPath, 0, FinalPath.Length);
+                    objectFound = false;
+                }
+            }
+        }
+    }
+
+    public bool CheckPath()
+    {
+        if (FinalPath.Length <= 0 || FinalPath == null)
+        {
+            return false;
         } else
         {
-            playerFound = false;
+            return true;
         }
-
-        
     }
 
-    private void TraversePath()
+    public void ClearPath()
     {
-        foreach (var path in FinalPath)
+        if (CheckPath())
         {
-            Rotate(path.position);
-
+            Array.Clear(FinalPath, 0, FinalPath.Length);
+            objectFound = false;
         }
-        FinalPath.Clear();
-        playerFound = false;
-
-        //if (FinalPath.Count > 0 && playerFound)
-        //{
-        //    //Rotate(FinalPath[0].position);
-        //    foreach (var path in FinalPath)
-        //    {
-        //        //Rotate(path.gameObject.transform.position);
-        //        Rotate(path.position);
-        //        //yield return new WaitForSeconds(0.2f);
-        //    }
-        //    FinalPath.Clear();
-        //    playerFound = false;
-        //}
-
-        //int count = FinalPath.Count;
-        //int i = 0;
-        //bool rotate = false;
-        //while (i < count)
-        //{
-        //    if (!rotate)
-        //    {
-        //        Rotate(FinalPath[0].position);
-        //        rotate = true;
-        //    }
-
-        //    if (time >= timeDelay)
-        //    {
-        //        rotate = false;
-        //        time = 0;
-        //        i += 1;
-        //    }
-        //}
-        //playerFound = false;
-        //isTraversing = false;
     }
 
-    private void Rotate(Vector3 targetPosition)
+    public void Rotate(Vector3 targetPosition)
     {
         //print("Rotating : " + targetPosition);
         var lookPos = targetPosition - transform.position;
         lookPos.y = 0;
         var rotation = Quaternion.LookRotation(lookPos);
-        transform.rotation = Quaternion.Slerp(transform.rotation, rotation, 1);
+        transform.rotation = Quaternion.Slerp(transform.rotation, rotation, Time.deltaTime * 10f);
+
     }
 
-    private void FindPath(GridNode startPos, GridNode endPos)
+    public Vector3[] FindPath(GridNode startCell, GridNode targetCell)
     {
-        GridNode startCell = startPos;
-        
-        GridNode targetCell = endPos;    
         List<GridNode> OpenList = new List<GridNode>();
         HashSet<GridNode> CloseList = new HashSet<GridNode>();
-        
-        OpenList.Add(startCell);
 
+
+        OpenList.Add(startCell);
         while (OpenList.Count > 0)
         {
+            
             GridNode currCell = OpenList[0];
-
             for (int i = 1; i < OpenList.Count; i++)
             {
                 if (OpenList[i].FCost < currCell.FCost || OpenList[i].FCost == currCell.FCost && OpenList[i].hCost < currCell.hCost)
@@ -167,20 +157,29 @@ public class EnemyMovement : MonoBehaviour
                 }
             }
 
+            if (currCell == null)
+            {
+                break;
+            }
+
             OpenList.Remove(currCell);
+
             CloseList.Add(currCell);
             
             if (currCell == targetCell)
             {
-                playerFound = true;
-                print("Player Found = " + targetCell.x + "," + targetCell.y);
+                objectFound = true;
+                //print("Player Found = " + targetCell.x + "," + targetCell.y);
                 FinalPath = GetFinalPath(startCell, targetCell);
+                //VisualizeFinalPath();
+                return FinalPath;
             }
 
             
 
             foreach (GridNode neighbor in GetNeighbors(currCell))
             {
+                if (neighbor == null) continue;
                 
                 if (neighbor.isObstacle || CloseList.Contains(neighbor))
                 {
@@ -194,7 +193,6 @@ public class EnemyMovement : MonoBehaviour
                     neighbor.gCost = moveCost;
                     neighbor.hCost = GetManhattahnDistance(neighbor, targetCell);
                     neighbor.parent = currCell;
-
                     if (!OpenList.Contains(neighbor))
                     {
                         OpenList.Add(neighbor);
@@ -202,20 +200,19 @@ public class EnemyMovement : MonoBehaviour
                 }
             }
         }
+        return null;
     }
 
-    private GridNode GetGridNode(Vector3 pos)
+    private void VisualizeFinalPath()
     {
-        //print(pos.x + " ## " + pos.y);
-        int pX = (int)(pos.x / GridManager.scale);
-        int pY = (int)(pos.z / GridManager.scale);
-        //print(pX + " <> " + pY);
-        if (pX < 0 || pX >= GridManager.rows || pY < 0 || pY >= GridManager.columns)
+        foreach (var path in FinalPath)
         {
-            return null;
+            GameObject obj = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            obj.transform.position = path;
         }
-        return gridArray[pX, pY];
     }
+
+    
 
     private List<GridNode> GetNeighbors(GridNode cell)
     {
@@ -238,7 +235,9 @@ public class EnemyMovement : MonoBehaviour
         {
             if (yCheck >= 0 && yCheck < gridSizeY)
             {
-                neighborList.Add(gridArray[xCheck, yCheck]);
+                var neighbor = GridManager.GetGridArray()[yCheck, xCheck];
+                if (neighbor != null)
+                    neighborList.Add(neighbor);
             }
         }
 
@@ -250,7 +249,9 @@ public class EnemyMovement : MonoBehaviour
         {
             if (yCheck >= 0 && yCheck < gridSizeY)
             {
-                neighborList.Add(gridArray[xCheck, yCheck]);
+                var neighbor = GridManager.GetGridArray()[yCheck, xCheck];
+                if (neighbor != null)
+                    neighborList.Add(neighbor);
             }
         }
 
@@ -262,7 +263,9 @@ public class EnemyMovement : MonoBehaviour
         {
             if (yCheck >= 0 && yCheck < gridSizeY)
             {
-                neighborList.Add(gridArray[xCheck, yCheck]);
+                var neighbor = GridManager.GetGridArray()[yCheck, xCheck];
+                if (neighbor != null)
+                    neighborList.Add(neighbor);
             }
         }
 
@@ -274,7 +277,9 @@ public class EnemyMovement : MonoBehaviour
         {
             if (yCheck >= 0 && yCheck < gridSizeY)
             {
-                neighborList.Add(gridArray[xCheck, yCheck]);
+                var neighbor = GridManager.GetGridArray()[yCheck, xCheck];
+                if (neighbor != null)
+                    neighborList.Add(neighbor);
             }
         }
 
@@ -289,7 +294,7 @@ public class EnemyMovement : MonoBehaviour
         return ix + iy;
     }
 
-    private List<GridNode> GetFinalPath(GridNode startCell, GridNode targetCell)
+    private /*List<GridNode>*/Vector3[] GetFinalPath(GridNode startCell, GridNode targetCell)
     {
         //print(startCell.position + " --> " + targetCell.position);
         List<GridNode> finalPath = new List<GridNode>();
@@ -302,11 +307,32 @@ public class EnemyMovement : MonoBehaviour
             finalPath.Add(currCell);
             currCell = currCell.parent;
         }
+        Vector3[] simplePath = SimplifyPath(finalPath);
         //print("Found");
-        finalPath.Reverse();
-        return finalPath;
+        //finalPath.Reverse();
+        Array.Reverse(simplePath);
+        return simplePath;
         
     }
 
+    private Vector3[] SimplifyPath(List<GridNode> path)
+    {
+        List<Vector3> waypoints = new List<Vector3>();
+        Vector2 directionOld = Vector2.zero;
 
+        for (int i = 1; i < path.Count; i++)
+        {
+            // Direction between two nodes
+            Vector2 directionNew = new Vector2(path[i - 1].position.x - path[i].position.x, path[i - 1].position.y - path[i].position.y);
+
+            //// If path has changed direction
+            if (directionNew != directionOld)
+            {
+                waypoints.Add(path[i].position + Vector3.zero);
+            }
+            directionOld = directionNew;
+            
+        }
+        return waypoints.ToArray();
+    }
 }

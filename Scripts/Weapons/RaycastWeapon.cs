@@ -5,15 +5,6 @@ using UnityEngine.UI;
 
 public class RaycastWeapon : MonoBehaviour
 {
-
-    class Bullet
-    {
-        public float time;
-        public Vector3 initPos;
-        public Vector3 initVelocity;
-        public TrailRenderer trailer;
-    }
-
     public bool isShooting = false;
     private WeaponBehaviour currWeapon;
     [SerializeField] private ParticleSystem[] muzzleFlash;
@@ -46,11 +37,16 @@ public class RaycastWeapon : MonoBehaviour
 
     public GameObject magazine;
 
-
+    private AudioSource shootAudio;
+    private AudioManager audioManager;
     private void Awake()
     {
+        shootAudio = GetComponent<AudioSource>();
+
         currWeapon = GetComponent<WeaponBehaviour>();
         weaponRecoil = GetComponent<RecoilWeapon>();
+        
+        audioManager = new AudioManager(shootAudio);
     }
 
     void Start()
@@ -71,11 +67,13 @@ public class RaycastWeapon : MonoBehaviour
 
     Bullet CreateBullet(Vector3 pos, Vector3 velocity)
     {
-        Bullet bullet = new Bullet();
-        bullet.initPos = pos;
-        bullet.initVelocity = velocity;
-        bullet.time = 0.0f;
-        bullet.trailer = Instantiate(bulletTrail, pos, Quaternion.identity);
+        Bullet bullet = new Bullet
+        {
+            initPos = pos,
+            initVelocity = velocity,
+            time = 0.0f,
+            trailer = Instantiate(bulletTrail, pos, Quaternion.identity)
+        };
         bullet.trailer.AddPosition(pos);
         return bullet;
     }
@@ -84,16 +82,12 @@ public class RaycastWeapon : MonoBehaviour
     {
         if (ammoCount > 0)
         {
+            audioManager.PlayAudioWithoutLoop();
             isShooting = true;
             time = 0f;
             //BulletFire();
         }
         
-    }
-
-    private void Update()
-    {
- 
     }
 
     public void UpdateText()
@@ -137,7 +131,7 @@ public class RaycastWeapon : MonoBehaviour
     {
         time += deltaTime;
         float interval = 1.0f / currWeapon.fireRate;
-
+        //audioManager.PlayAudio();
         while (time >= 0.0f && ammoCount > 0)
         {
             BulletFire();
@@ -147,6 +141,8 @@ public class RaycastWeapon : MonoBehaviour
 
     private void BulletFire()
     {
+        audioManager.PlayAudioWithoutLoop();
+
         foreach (var part in muzzleFlash)
         {
             part.Emit(1);
@@ -161,7 +157,7 @@ public class RaycastWeapon : MonoBehaviour
         if (playerStatus.quest.id == 5 && transform.tag == "Rifle")
         {
             questShoot += 1;
-            questManager.updateQuestBox(questShoot.ToString() + " / 50");
+            questManager.UpdateQuestBox(questShoot.ToString() + " / 50");
             //print(questShoot.ToString() + " / 50");
             if (questShoot >= 50)
             {
@@ -170,6 +166,7 @@ public class RaycastWeapon : MonoBehaviour
         }
 
         UpdateText();
+
         weaponRecoil.GenerateRecoil();
     }
 
@@ -221,12 +218,22 @@ public class RaycastWeapon : MonoBehaviour
                     //print("Hit Target!!");
                     
                     questTarget += 1;
-                    questManager.updateQuestBox(questTarget.ToString() + " / 10");
+                    questManager.UpdateQuestBox(questTarget.ToString() + " / 10");
                     if (questTarget >= 10)
                     {
                         playerStatus.quest.isDone = true;
                     }
                 }
+            }
+
+            if (hitTarget.transform.CompareTag("Enemy"))
+            {
+                EnemyBehaviour enemy = hitTarget.transform.GetComponent<EnemyBehaviour>();
+                enemy.TakeDamage(currWeapon.bulletDamage);
+            } else if (hitTarget.transform.CompareTag("Boss"))
+            {
+                BossBehaviour boss = hitTarget.transform.GetComponent<BossBehaviour>();
+                boss.TakeDamage(currWeapon.bulletDamage);
             }
 
 
@@ -246,5 +253,6 @@ public class RaycastWeapon : MonoBehaviour
     public void Stop()
     {
         isShooting = false;
+        //audioManager.StopAudio();
     }
 }
